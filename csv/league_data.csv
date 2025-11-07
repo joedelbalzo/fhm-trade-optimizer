@@ -1,0 +1,204 @@
+LeagueId;Name;Abbr
+0;National Hockey League;NHL
+1;American Hockey League;AHL
+2;Kontinental Hockey League;KHL
+3;Liiga;SML
+4;Swedish Hockey League;SHL
+5;Tipsport extraliga;ELH
+6;Deutsche Liga;DL
+7;National League;NL
+8;Tipos extraliga;Svk
+9;Elite Ice Hockey League;EIHL
+10;ECHL;ECHL
+11;Ontario Hockey League;OHL
+12;Western Hockey League;WHL
+13;Quebec Major Junior Hockey League;QMJHL
+14;NCAA Division I Ice Hockey;NCAA
+15;Fjordkraft Ligaen;Nor
+16;Synerglace Ligue Magnus;SLM
+18;Mednarodna hokejska liga;Svn
+19;Ukrainian Hockey Super League;Ukr
+20;Polska Hokej Liga;PHL
+22;win2day ICE Hockey League;IceHL
+23;Belarusian Extraleague;BXL
+24;Metal Ligaen;Den
+25;Erste Liga;ERS
+26;Campionatul National;Rom
+28;Liga Nacional de Hockey Hielo;Spa
+29;Australian Ice Hockey League;AIHL
+30;Icelandic Hockey League;Ice
+32;Federal Prospects Hockey League;FPHL
+33;Southern Professional Hockey League;SPHL
+34;North American Hockey League;NAHL
+35;United States Hockey League;USHL
+36;Maritime Junior A Hockey League;MAHL
+37;Quebec Junior Hockey League;LHJQ
+38;Ontario Junior Hockey League;OJHL
+39;Central Canada Hockey League;CCHL
+40;Northern Ontario Junior Hockey League;NOJHL
+41;Superior International Junior Hockey League;SIJHL
+42;British Columbia Hockey League;BCHL
+43;Alberta Junior Hockey League;AJHL
+44;Saskatchewan Junior Hockey League;SJHL
+45;Manitoba Junior Hockey League;MJHL
+46;U Sports Ice Hockey;UIH
+47;Alberta Colleges Athletics Conference;ACAC
+48;HockeyAllsvenskan;HA
+49;Slovenska hokejska liga U20;SLO20
+51;ICE Young Stars League;IYSL
+53;Molodyozhnaya Hokkeinaya Liga;MHL
+54;Vserossiyskaya Hokkeinaya Liga;VHL
+55;Natsionalnaya Molodyozhnaya Hokkeinaya Liga;NMHL
+57;Parimatch Pro Hokei Ligasy;Kaz
+58;Extraliga junioru;ELJ
+59;Mestis;MESTIS
+60;U20 SM-Sarja;SMU20
+61;U20 Mestis;MU20
+62;Deutsche Liga - 2;DL2
+63;Deutsche Nachwuchs Liga I;DNL1
+64;Tipos Slovenská hokejová liga;Svk1
+65;Extraliga juniorov U20;EXJ
+66;Swiss League;SL
+67;Swiss U20-Elit;JEA
+68;Denmark U20;DenU20
+69;ATG Hockeyettan;1HE
+70;Sweden J20 Nationell;NJ20
+71;Italian Hockey League;Ita
+78;HockeyTvåan;2HT
+80;NIHL South D1 - Britton;NS1
+81;NIHL South D2 - Wilkinson;NS2
+83;Chance Liga;CL
+91;Pervenstvo VHL;PVHL
+102;Scottish National League;Scot
+103;Optibet Hokeja Liga;Lat
+104;Junioru Attistibas Hokeja Liga;Lat2
+105;Junior B;Jr B
+106;Junior C;Jr C
+107;Unaffiliated Junior;UA Jr
+108;Juvenile;Juv
+109;North American U18;U18
+110;North American U15;U15
+111;High School;HS
+112;Lower Level College;Coll
+113;Senior;Snr
+114;Semi-Professional Leagues;Semi
+115;Elite League;Elit
+116;Second Divisions;Div2
+117;Third Divisions;Div3
+118;Lower Divisions;Div4
+119;Under-20;U20
+120;Under-19;U19
+121;Under-18;U18
+122;Under-17;U17
+123;Under-16;U16
+124;Under-15;U15
+125;Under-14;U14
+126;Oberliga;OBE
+127;2. hokejová liga Ceské republiky;Cz2
+128;Suomi-Sarja;SUO
+129;II-divisioona;II-D
+130;III-divisioona;III-D
+131;Deutsche Nachwuchs Liga III;DNL3
+132;NIHL North D1 - Moralee;NN1
+133;NIHL North D2 - Laidler;NN2
+134;Asia League Ice Hockey;ALIH
+135;U20 Suomi-Sarja;SSU20
+136;Sweden J18 Region;U18
+137;Sweden J20 Region;SE20
+138;Japanese University Leagues;JUL
+139;J-Ice Leagues;Jap
+140;Chinese Ice Hockey Championship;CIHC
+141;Korean University League;KUL
+142;Swiss U20-Top;JEB
+143;Swiss 1. Liga;Sui1
+144;Norwegian U20 Elite;NorU20
+145;Norwegian 1.Divisjon;Nor1
+147;FFHG Division 1;Fra1
+150;Korean Independent Hockey League;KIHL
+151;Belarusian High League;BelH
+152;Belarus U18;U18
+153;Belarus U16;U16
+154;Belarus U14;U14
+155;Extraliga dorostu;ELD
+156;Czech Republic U15;U15
+157;Czech Republic U14;U14
+158;Finland U18;U18
+159;Finland U16;U16
+160;Finland U14;U14
+161;France U20;U20
+162;France U17;U17
+163;France U15;U15
+164;France U14;U14
+165;Germany U17;U17
+166;Germany U14;U14
+167;Kazakhstan U20;U20
+168;Kazakhstan U18;U18
+169;Kazakhstan U16;U16
+170;Kazakhstan U14;U14
+172;Latvia U18;Lat18
+173;Latvia U16;U16
+174;Latvia U14;U14
+175;Norway U18;U18
+176;Norway U16;U16
+177;Norway U14;U14
+178;Kaufland Extraliga dorastu U18;EXD
+179;Slovakia U16;U16
+180;Slovakia U14;U14
+181;Sweden U16;U16
+182;Sweden U14;U14
+183;Switzerland U18;U18
+184;Switzerland U16;U16
+185;Switzerland U14;U14
+186;United Kingdom U20;UKU20
+187;United Kingdom U18;U18
+188;United Kingdom U15;U15
+189;United Kingdom U14;U14
+190;Russia U18;Rus18
+191;Russia U16;Rus16
+192;Russia U14;Rus14
+193;Ligue Nord-Américaine de Hockey;LNAH
+194;Danish 1. Division;Den1
+195;U20 Aluesarja;AU20
+196;U18 SM-Sarja;U18SM
+197;BeNe League;BeNe
+198;Alps Hockey League;AlpHL
+200;Serbian Hockey League;Ser
+201;Croatian Ice Hockey League;Cro
+202;Bosnian Hokej Liga;BHL
+203;Estonian Meistrihokiliiga;Est
+210;U18 Mestis;MU18
+211;Hungarian Junior League;U21
+213;Polish 1. Liga;Pol1
+216;Centralna Liga Juniorów;CLJ
+217;Russia U17;Rus17
+218;MyHockey League;MHL
+219;Austria U14;U14
+220;Austria U16;U16
+221;ICE Juniors League U18;ICEJL
+222;Denmark U14;U14
+223;Denmark U16;U16
+224;Denmark U17;DenU17
+225;Slovenia U14;U14
+226;Slovenia U16;U16
+227;Slovenia U18;U18
+228;Belarus U20;U20
+229;Poland U14;U14
+230;Poland U16;U16
+231;Poland U18;U18
+233;Hungary U14;U14
+234;Hungary U16;U16
+235;Hungary U18;U18
+236;Hungary U20;U20
+237;Italy U14;U14
+238;Italy U16;U16
+239;Italy U18;U18
+240;Italy U19;U19
+242;Deutsche Nachwuchs Liga II;DNL2
+243;National Collegiate Development Conference;NCDC
+244;New Zealand Ice Hockey League;NZIHL
+245;Lithuanian Open Championship;LIT
+246;Israeli League;ISR
+247;NIHL National;NIHL
+248;Bulgarian Hockey League;Bul
+249;Liga junioru;LJ
+250;U19 Suomi-sarja;U19 S-S

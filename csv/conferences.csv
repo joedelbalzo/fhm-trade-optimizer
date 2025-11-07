@@ -1,0 +1,123 @@
+League Id;Conference Id;Name
+0;0;Eastern Conference
+0;1;Western Conference
+1;0;Eastern Conference
+1;1;Western Conference
+2;0;Western Conference
+2;1;Eastern Conference
+9;0;Gardiner Conference
+9;1;Erhardt Conference
+9;2;Patton Conference
+10;0;Eastern Conference
+10;1;Western Conference
+11;0;Eastern Conference
+11;1;Western Conference
+12;0;Eastern Conference
+12;1;Western Conference
+14;0;Atlantic Hockey
+14;1;Big 10
+14;2;ECAC
+14;3;Hockey East
+14;4;Central Collegiate Hockey Association
+14;5;NCHC
+14;6;Independents
+35;0;Eastern Conference
+35;1;Western Conference
+38;0;North-East Conference
+38;1;South-West Conference
+46;0;Atlantic University Sport
+46;1;Canada West
+46;2;Ontario University Athletics
+51;0;Gruppe A (West)
+51;1;Gruppe B (Ost)
+53;0;Western Conference
+53;1;Eastern Conference
+63;0;Group A
+63;1;Group B
+69;0;North
+69;1;East
+69;2;West
+69;3;South
+124;0;Europe
+124;1;Other
+125;0;Europe
+125;1;Other
+126;0;Nord
+126;1;Süd
+127;0;Východ
+127;1;Západ
+127;2;Stred
+129;0;Lohko 1 (Etelä)
+129;1;Lohko 2 (Häme)
+129;2;Lohko 3 (Keskimaa)
+129;3;Lohko 4 (Savo-Karjala)
+129;4;Lohko 5 (Pohjoinen)
+129;5;Lohko 6 (Länsirannikko)
+129;0;Lohko 1 (Etelä)
+129;1;Lohko 2 (Häme)
+129;2;Lohko 3 (Keskimaa)
+129;3;Lohko 4 (Savo-Karjala)
+129;4;Lohko 5 (Pohjoinen)
+129;5;Lohko 6 (Länsirannikko)
+130;0;Etelä
+130;1;Häme
+130;2;Keskimaa
+130;3;Länsirannikko
+130;4;Lappi
+130;5;Pohjoinen
+130;6;Savo-Karjala
+130;7;Kymi-Saimaa
+131;0;Nord
+131;1;Süd
+135;0;Lohko 1
+135;1;Lohko 2
+135;2;Lohko 3
+136;0;Norra
+136;1;Södra
+136;2;Västra
+136;3;Östra
+137;0;Norra
+137;1;Södra
+137;2;Västra
+137;3;Östra
+139;0;J-Ice North
+139;1;J-Ice West
+139;2;J-Ice Central
+139;3;J-Ice East
+139;4;J-Ice Northeast
+139;5;J-Ice South
+142;0;Ost
+142;1;West
+143;0;East
+143;1;Central
+143;2;West
+165;0;Group A
+165;1;Group B
+165;2;Group C
+165;3;Group D
+190;0;Center
+190;1;Siberia
+190;2;Urals
+190;3;Volga
+191;0;Moskva
+191;1;Moskva Region
+191;2;Siberia
+191;3;St. Petersburg
+191;4;Urals
+191;5;Volga Region
+195;0;Lohko 1
+195;1;Lohko 2
+195;2;Lohko 3
+197;0;BeNe Pool A
+197;1;BeNe Pool B
+210;0;Lohko 1
+210;1;Lohko 2
+210;2;Lohko 3
+210;3;Lohko 4
+217;0;Moskva
+217;1;Moskva Region
+217;2;St. Petersburg
+217;3;Urals-Western Siberia
+217;4;Volga Region
+221;0;Gruppe A (West)
+221;1;Gruppe B (Ost)

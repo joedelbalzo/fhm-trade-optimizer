@@ -1,0 +1,27 @@
+{
+  "name": "hockey-lineup-optimizer",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "start": "concurrently -n server,client -c auto \"npm:server\" \"npm:client\"",
+    "server": "npm --workspace server run dev",
+    "client": "npm --workspace client run dev",
+    "build": "npm --workspace server run build && npm --workspace client run build",
+    "migrate": "npm --workspace server run migrate",
+    "seed": "npm --workspace server run seed",
+    "import-fhm": "npm --workspace server run import-fhm",
+    "import-quick": "npm --workspace server run import-quick",
+    "analyze-cup-winners": "npm --workspace server run analyze-cup-winners"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.4.1"
+  }
+}

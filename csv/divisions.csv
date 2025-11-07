@@ -1,0 +1,107 @@
+League Id;Conference Id;Division Id;Name
+0;0;0;Atlantic
+0;0;1;Metropolitan
+0;1;0;Pacific
+0;1;1;Central
+1;0;0;Atlantic Division
+1;0;1;North Division
+1;1;0;Central Division
+1;1;1;Pacific Division
+2;0;0;Bobrov Division
+2;0;1;Tarasov Division
+2;1;0;Kharlamov Division
+2;1;1;Chernyshev Division
+10;0;0;North Division
+10;0;1;South Division
+10;1;0;Central Division
+10;1;1;Mountain Division
+11;0;0;East
+11;0;1;Central
+11;1;0;Midwest
+11;1;1;West
+12;0;0;Eastern Divison
+12;0;1;Central Division
+12;1;0;B.C. Division
+12;1;1;U.S. Division
+13;-1;0;West
+13;-1;1;East
+13;-1;2;Maritimes
+32;-1;0;Continental Division
+32;-1;1;Empire Division
+34;-1;0;Midwest Division
+34;-1;1;East Division
+34;-1;2;Central Division
+34;-1;3;South Division
+36;-1;0;Eastlink Division
+36;-1;1;Roger Meek Division
+37;-1;0;Division Martin St-Louis
+37;-1;1;Division Alexandre Burrows
+38;0;0;North Division
+38;0;1;East Division
+38;1;0;West Division
+38;1;1;South Division
+39;-1;0;Robinson Division
+39;-1;1;Yzerman Division
+40;-1;0;West Division
+40;-1;1;East Division
+42;-1;0;Island Division
+42;-1;1;Mainland Division
+42;-1;2;Interior Division
+43;-1;0;North Division
+43;-1;1;South Division
+44;-1;0;Viterra Division
+44;-1;1;Olympic Building Division
+44;-1;2;Sherwood Division
+45;-1;0;Addison Division
+45;-1;1;Sher-Wood Division
+46;2;0;East Division
+46;2;1;West Division
+53;0;0;Northwest
+53;0;1;Center
+53;1;0;Volga
+53;1;1;Ural-Siberia
+105;-1;0;Canada
+105;-1;1;USA
+106;-1;0;Canada
+106;-1;1;USA
+109;-1;0;Canada
+109;-1;1;USA
+109;-1;2;Mexico
+110;-1;0;Canada
+110;-1;1;USA
+110;-1;2;Mexico
+111;-1;0;Canada
+111;-1;1;USA
+124;0;0;Western Europe
+124;0;1;Eastern Europe
+124;0;2;Northern Europe
+124;0;3;Central Europe
+124;1;0;Asia
+124;1;1;Africa
+124;1;2;Oceania
+124;1;3;South America
+125;0;0;Western Europe
+125;0;1;Eastern Europe
+125;0;2;Northern Europe
+125;0;3;Central Europe
+125;1;0;Asia
+125;1;1;Africa
+125;1;2;Oceania
+125;1;3;South America
+130;0;0;Etelä 1
+130;0;1;Etelä 2
+130;1;0;Häme 1
+130;1;1;Häme 2
+130;1;2;Häme 3
+130;1;3;Häme A
+130;2;0;Keskimaa 1
+130;2;1;Keskimaa 2
+130;2;2;Keskimaa 3
+130;3;0;Länsirannikko A
+130;3;1;Länsirannikko Y
+190;1;0;Siberia East
+190;1;1;Siberia West
+190;3;0;Volga A
+190;3;1;Volga B
+191;5;0;Volga Region A
+191;5;1;Volga Region B

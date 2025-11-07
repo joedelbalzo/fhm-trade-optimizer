@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(while read fname count)",
+      "Bash(do echo:*)",
+      "Bash(taskkill /F /PID 19156)",
+      "Bash(kill:*)",
+      "Bash(netstat:*)",
+      "Bash(cmd /c \"taskkill /F /PID 19156\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 19156 -Force\")",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue | Select-Object -Property LocalAddress, LocalPort, State, OwningProcess\")"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\jdelb\\Documents\\nhl-roster-app",
+      "C:\\c\\Users\\jdelb\\Documents"
+    ]
+  }
+}
