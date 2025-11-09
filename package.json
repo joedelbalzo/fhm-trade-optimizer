@@ -14,7 +14,10 @@
     "seed": "npm --workspace server run seed",
     "import-fhm": "npm --workspace server run import-fhm",
     "import-quick": "npm --workspace server run import-quick",
-    "analyze-cup-winners": "npm --workspace server run analyze-cup-winners"
+    "analyze-cup-winners": "npm --workspace server run analyze-cup-winners",
+    "generate-benchmarks": "npm --workspace server run generate-benchmarks",
+    "generate-comprehensive-benchmarks": "npm --workspace server run generate-comprehensive-benchmarks",
+    "test-weaknesses": "npm --workspace server run test-weaknesses"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

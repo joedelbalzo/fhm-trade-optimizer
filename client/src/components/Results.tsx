@@ -45,10 +45,33 @@ function ReplacementDropdown({ replacementOptions }: { replacementOptions: any[]
 
 export default function Results({ data }: { data: any | null }) {
   if (!data) return null;
-  const { weakLinks = [], recommendations = [] } = data;
+  const { weakLinks = [], recommendations = [], cupWinnerBenchmarks } = data;
 
   return (
     <div className="results">
+      {cupWinnerBenchmarks && (
+        <>
+          <h3>Cup Winner Benchmark Analysis</h3>
+          <div className="benchmark-summary">
+            <div className="summary-stat">
+              <span>Players Analyzed:</span> <strong>{cupWinnerBenchmarks.summary.totalPlayers}</strong>
+            </div>
+            <div className="summary-stat">
+              <span>Average Z-Score:</span>
+              <strong className={cupWinnerBenchmarks.summary.averageZScore < 0 ? 'negative' : 'positive'}>
+                {cupWinnerBenchmarks.summary.averageZScore.toFixed(2)}
+              </strong>
+            </div>
+            <div className="breakdown">
+              <span className="critical">🔴 {cupWinnerBenchmarks.summary.criticalWeaknesses}</span>
+              <span className="high">🟠 {cupWinnerBenchmarks.summary.highWeaknesses}</span>
+              <span className="moderate">🟡 {cupWinnerBenchmarks.summary.moderateWeaknesses}</span>
+              <span className="good">🟢 {cupWinnerBenchmarks.summary.meetsStandards}</span>
+            </div>
+          </div>
+        </>
+      )}
+
       <h3>Weak Links</h3>
       {weakLinks.length === 0 ? (
         <div className="muted">None / need data.</div>
@@ -129,6 +152,43 @@ export default function Results({ data }: { data: any | null }) {
       )}
 
       <style jsx>{`
+        .benchmark-summary {
+          background: #f8f9fa;
+          border: 2px solid #007bff;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 20px;
+        }
+
+        .summary-stat {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          font-size: 15px;
+        }
+
+        .summary-stat .negative {
+          color: #dc3545;
+        }
+
+        .summary-stat .positive {
+          color: #28a745;
+        }
+
+        .breakdown {
+          display: flex;
+          gap: 12px;
+          justify-content: space-around;
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #dee2e6;
+        }
+
+        .breakdown span {
+          font-weight: 600;
+          font-size: 14px;
+        }
+
         .weakness-detail {
           margin-top: 8px;
           padding: 12px;

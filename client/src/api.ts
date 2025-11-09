@@ -87,3 +87,14 @@ export async function getSpecialTeamsAnalysis(teamAbbrev: string): Promise<any> 
   if (!r.ok) throw new Error('Special teams analysis failed');
   return r.json();
 }
+
+export async function getComprehensiveWeaknesses(teamAbbrev: string, minGamesPlayed = 10): Promise<any> {
+  const r = await fetch(`${base}/api/analyze/comprehensive-weaknesses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamAbbrev, minGamesPlayed })
+  });
+  if (!r.ok) throw new Error('Comprehensive weakness analysis failed');
+  const response = await r.json();
+  return response.data;  // Extract the data field from the wrapper
+}

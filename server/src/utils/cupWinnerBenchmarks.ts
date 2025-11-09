@@ -1,6 +1,11 @@
 // server/src/utils/cupWinnerBenchmarks.ts
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface RoleBenchmark {
   avgPPG: number;
@@ -10,12 +15,11 @@ interface RoleBenchmark {
   p75PPG: number;
   minPPG: number;
   maxPPG: number;
-  avgAge: number;
-  avgCapHit: number;
+  avgTOI: number;
   avgCorsiForPct: number;
+  stdDevCorsiForPct: number;
   avgFenwickForPct: number;
-  avgGameRatingOff: number;
-  avgGameRatingDef: number;
+  stdDevFenwickForPct: number;
   sampleSize: number;
 }
 
@@ -35,7 +39,9 @@ export function loadBenchmarks(): Benchmarks | null {
   }
 
   try {
-    const benchmarkPath = path.resolve('./cup-winner-benchmarks.json');
+    // Resolve from project root (3 levels up from this file: server/src/utils)
+    const benchmarkPath = path.resolve(__dirname, '../../../cup-winner-benchmarks.json');
+
     if (!fs.existsSync(benchmarkPath)) {
       console.warn('Cup winner benchmarks not found. Run: npm run analyze-cup-winners');
       return null;

@@ -11,7 +11,10 @@
     "import-quick": "tsx src/scripts/import-fhm12-quick.ts",
     "import-players": "tsx src/scripts/import-players-only.ts",
     "import-stats": "tsx src/scripts/import-career-stats.ts",
-    "analyze-cup-winners": "tsx src/scripts/analyze-cup-winners.ts"
+    "analyze-cup-winners": "tsx src/scripts/analyze-cup-winners.ts",
+    "generate-benchmarks": "tsx src/scripts/generate-benchmarks-from-csv.ts",
+    "generate-comprehensive-benchmarks": "tsx src/scripts/generate-comprehensive-benchmarks.ts",
+    "test-weaknesses": "tsx src/scripts/test-comprehensive-weaknesses.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

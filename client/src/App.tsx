@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getTeams, getRoster, analyze } from './api';
+import { getTeams, getRoster, analyze, getComprehensiveWeaknesses } from './api';
 import type { AnalyzeResponse, Mode, Team, Player, RosterResponse } from './types';
 import ModeToggle from './components/ModeToggle';
 import LineupEditor from './components/LineupEditor';

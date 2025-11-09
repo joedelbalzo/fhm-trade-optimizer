@@ -4,23 +4,44 @@ import { Router } from 'express';
 import { analyzeTeamWithHockeyIntelligence } from '../services/hockeyAnalysis.js';
 import { performAdvancedTeamAnalysis } from '../services/advancedTeamAnalysis.js';
 import { analyzeTeamSpecialTeams } from '../services/specialTeamsAnalysis.js';
+import { detectComprehensiveWeaknesses, getRosterBenchmarkSummary } from '../services/comprehensiveWeaknessDetection.js';
+import { Team } from '../models/index.js';
 
 const r = Router();
 
-// ONLY hockey-intelligent analysis endpoint
+// Hockey-intelligent analysis using Cup winner benchmarks
 r.post('/analyze', async (req, res) => {
   try {
     const { teamAbbrev, mode } = (req.body || {}) as {
       teamAbbrev: string;
       mode?: 'win-now' | 'rebuild';
     };
-    
+
     if (!teamAbbrev) {
       return res.status(400).json({ error: 'teamAbbrev is required' });
     }
-    
+
+    const team = await Team.findOne({ where: { abbr: teamAbbrev } });
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Use the full hockey intelligence analysis with Cup winner benchmarks
     const data = await analyzeTeamWithHockeyIntelligence(teamAbbrev, mode || 'win-now');
-    res.json(data);
+
+    // Add benchmark summary for UI display
+    const benchmarkSummary = await getRosterBenchmarkSummary(team.teamId);
+    const benchmarkScores = await detectComprehensiveWeaknesses(team.teamId, 10);
+
+    const response = {
+      ...data,
+      cupWinnerBenchmarks: {
+        summary: benchmarkSummary,
+        allPlayers: benchmarkScores
+      }
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Hockey analysis error:', error);
     res.status(500).json({ error: 'Failed to perform hockey analysis' });

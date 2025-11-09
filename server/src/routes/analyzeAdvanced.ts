@@ -5,6 +5,8 @@
 
 import { Router } from 'express';
 import { analyzeTeamAdvanced, getMethodologyExplanation } from '../services/analyzeAdvanced.js';
+import { detectComprehensiveWeaknesses, getWeakLinks, getRosterBenchmarkSummary } from '../services/comprehensiveWeaknessDetection.js';
+import { Team } from '../models/index.js';
 
 const router = Router();
 
@@ -189,5 +191,118 @@ function getMostCommonWeakRoles(analyses: any[]): Array<{ role: string; count: n
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 }
+
+/**
+ * POST /api/analyze/comprehensive-weaknesses
+ * Use Cup winner benchmarks to identify all weak links on roster
+ */
+router.post('/analyze/comprehensive-weaknesses', async (req, res) => {
+  try {
+    const { teamAbbrev, minGamesPlayed = 10 } = req.body;
+
+    if (!teamAbbrev) {
+      return res.status(400).json({
+        success: false,
+        error: 'teamAbbrev is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Find team
+    const team = await Team.findOne({ where: { abbr: teamAbbrev } });
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        error: `Team ${teamAbbrev} not found`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log(`Comprehensive weakness detection for ${teamAbbrev} (teamId: ${team.teamId})`);
+
+    // Get comprehensive weakness analysis
+    const weaknessScores = await detectComprehensiveWeaknesses(team.teamId, minGamesPlayed);
+    console.log(`  Found ${weaknessScores.length} players with weakness scores`);
+
+    const weakLinks = weaknessScores.filter(s => s.severityRating === 'Critical' || s.severityRating === 'High');
+    console.log(`  ${weakLinks.length} critical/high weak links`);
+
+    const summary = await getRosterBenchmarkSummary(team.teamId);
+    console.log(`  Summary: ${summary.totalPlayers} total, avg z-score: ${summary.averageZScore.toFixed(2)}`);
+
+    res.json({
+      success: true,
+      data: {
+        team: {
+          abbrev: team.abbr,
+          name: team.name,
+          teamId: team.teamId,
+        },
+        summary,
+        weakLinks,
+        allPlayers: weaknessScores,
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Comprehensive weakness detection error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * POST /api/analyze/weak-links
+ * Get only the actual weak links (Critical + High severity)
+ */
+router.post('/analyze/weak-links', async (req, res) => {
+  try {
+    const { teamAbbrev, minGamesPlayed = 10 } = req.body;
+
+    if (!teamAbbrev) {
+      return res.status(400).json({
+        success: false,
+        error: 'teamAbbrev is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const team = await Team.findOne({ where: { abbr: teamAbbrev } });
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        error: `Team ${teamAbbrev} not found`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const weakLinks = await getWeakLinks(team.teamId, minGamesPlayed);
+
+    res.json({
+      success: true,
+      data: {
+        team: {
+          abbrev: team.abbr,
+          name: team.name,
+        },
+        weakLinksCount: weakLinks.length,
+        weakLinks,
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Weak links detection error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 export default router;

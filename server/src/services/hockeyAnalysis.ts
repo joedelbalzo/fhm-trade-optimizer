@@ -4,6 +4,46 @@
 import { Op } from 'sequelize';
 import { Team, Player, PlayerSeasonStat, PlayerRating } from '../models/index.js';
 import { currentSeason, calculatePlayerAgeSync } from './scoring.js';
+import { loadBenchmarks, compareAgainstBenchmark, getExpectedPPGRange } from '../utils/cupWinnerBenchmarks.js';
+
+// Map current role classification to Cup winner benchmark roles
+function mapRoleToBenchmark(lineRole: string, position: string, timeOnIce: number, playerType?: string): string | null {
+  // Defensemen
+  if (position === 'D' || position === 'LD' || position === 'RD') {
+    if (lineRole.includes('Top-Pair')) return '1D';
+    if (lineRole.includes('Second-Pair')) return '2D';
+    if (lineRole.includes('Third-Pair')) {
+      if (timeOnIce >= 18) return '3D';
+      if (timeOnIce >= 16) return '4D';
+      if (timeOnIce >= 14) return '5D';
+      return '6D';
+    }
+    // Default based on TOI
+    if (timeOnIce >= 22) return '1D';
+    if (timeOnIce >= 20) return '2D';
+    if (timeOnIce >= 18) return '3D';
+    if (timeOnIce >= 16) return '4D';
+    if (timeOnIce >= 14) return '5D';
+    return '6D';
+  }
+
+  // Centers
+  if (position === 'C') {
+    if (lineRole === 'Top Line') return '1C';
+    if (lineRole === 'Second Line') return '2C';
+    if (lineRole === 'Third Line' || lineRole === 'Bottom-6') return '3C';
+    return '4C';
+  }
+
+  // Wings (LW/RW)
+  if (position === 'LW' || position === 'RW') {
+    if (lineRole === 'Top Line' || lineRole === 'Second Line') return 'Top-6 Wing';
+    if (lineRole === 'Third Line' || lineRole === 'Bottom-6') return 'Middle-6 Wing';
+    return 'Bottom-6 Wing';
+  }
+
+  return null;
+}
 
 // Contract efficiency calculation for trade prioritization
 function calculateContractEfficiency(player: Player, metrics: any): number {
@@ -60,23 +100,36 @@ interface PlayerAnalysis {
 
 
 // Generate detailed GM-level weakness analysis
-function generateDetailedWeaknessAnalysis(player: Player, metrics: any, weakness: HockeyWeakness): HockeyWeakness {
+// NOTE: This function may be legacy - most analysis is now done inline with benchmarks
+export function generateDetailedWeaknessAnalysis(player: Player, metrics: any, weakness: HockeyWeakness): HockeyWeakness {
   const { timeOnIce, pointsPerGame, plusMinus, gamesPlayed } = metrics || {};
   const playerName = `${player.firstName} ${player.lastName}`;
-  
+
   if (weakness.type === 'forward_offensive') {
-    const expectedPPG = timeOnIce > 19 ? 0.5 : timeOnIce > 15 ? 0.35 : 0.25;
+    // Use Cup winner benchmarks if available
+    const benchmarks = loadBenchmarks();
+    let expectedPPG = timeOnIce > 19 ? 0.5 : timeOnIce > 15 ? 0.35 : 0.25; // Fallback
+
+    if (benchmarks) {
+      // Estimate role from TOI
+      const estimatedRole = timeOnIce > 19 ? 'Top-6 Wing' : timeOnIce > 15 ? 'Middle-6 Wing' : 'Bottom-6 Wing';
+      const comparison = compareAgainstBenchmark(estimatedRole, pointsPerGame || 0, benchmarks);
+      if (comparison.benchmark) {
+        expectedPPG = comparison.benchmark.p25PPG;
+      }
+    }
+
     const deficit = expectedPPG - (pointsPerGame || 0);
     const extrapolatedSeasonPts = (pointsPerGame || 0) * 82;
     const expectedSeasonPts = expectedPPG * 82;
-    
-    weakness.detailedAnalysis = `${playerName} is significantly underperforming in a top-6 role with ${(pointsPerGame || 0).toFixed(2)} PPG (${extrapolatedSeasonPts.toFixed(0)} pace over 82 games). For a player averaging ${timeOnIce?.toFixed(1)} minutes per game, we need at least ${expectedPPG.toFixed(2)} PPG (${expectedSeasonPts.toFixed(0)} points over 82 games). This represents a ${(deficit * 82).toFixed(0)}-point gap that's costing the team offensive production in key situations.`;
-    
+
+    weakness.detailedAnalysis = `${playerName} is significantly underperforming in a top-6 role with ${(pointsPerGame || 0).toFixed(2)} PPG (${extrapolatedSeasonPts.toFixed(0)} pace over 82 games). For a player averaging ${timeOnIce?.toFixed(1)} minutes per game, we need at least ${expectedPPG.toFixed(2)} PPG (${expectedSeasonPts.toFixed(0)} points over 82 games) based on Cup winner standards. This represents a ${(deficit * 82).toFixed(0)}-point gap that's costing the team offensive production in key situations.`;
+
     weakness.impactOnTeam = `With ${timeOnIce?.toFixed(1)} minutes per game, this player is consuming premium ice time that could generate ${(deficit * (gamesPlayed || 70)).toFixed(0)} more points with a proper top-6 forward. This affects power play opportunities, offensive zone starts, and overall team scoring depth.`;
-    
+
     weakness.urgency = weakness.severity >= 5 ? 'immediate' : weakness.severity >= 4 ? 'high' : 'medium';
   }
-  
+
   return weakness;
 }
 
@@ -614,14 +667,27 @@ function analyzeDefenseman(player: Player, metrics: any): PlayerAnalysis {
 
   if (role === 'Top-Pair Defenseman') {
     // Top-pair defensemen must excel in their specialty AND not be terrible defensively
+    // Use Cup winner benchmarks for performance standards
+    const benchmarks = loadBenchmarks();
+    const benchmarkRole = mapRoleToBenchmark(role, player.position, timeOnIce);
+
+    let expectedPPG1D = 0.35; // Fallback
+    let benchmarkDescription = '';
+
+    if (benchmarks && benchmarkRole) {
+      const comparison = compareAgainstBenchmark(benchmarkRole, pointsPerGame, benchmarks);
+      expectedPPG1D = comparison.benchmark?.p25PPG || expectedPPG1D;
+      benchmarkDescription = ` Cup-winning ${benchmarkRole}s average ${comparison.benchmark?.avgPPG.toFixed(3)} PPG (minimum: ${comparison.benchmark?.p25PPG.toFixed(3)} PPG).`;
+    }
+
     if (defenseType === 'Offensive') {
-      if (pointsPerGame < 0.35 || (plusMinus < -15 && turnoverRatio > 2.0)) {
+      if (pointsPerGame < expectedPPG1D || (plusMinus < -15 && turnoverRatio > 2.0)) {
         weakness = {
           type: 'defense_offensive',
           severity: 5,
-          description: `Offensive defenseman not producing: ${pointsPerGame.toFixed(2)} PPG, ${plusMinus} +/-, ${turnoverRatio.toFixed(1)} turnover ratio`,
+          description: `Offensive defenseman not producing: ${pointsPerGame.toFixed(2)} PPG vs ${expectedPPG1D.toFixed(2)} expected, ${plusMinus} +/-, ${turnoverRatio.toFixed(1)} turnover ratio.${benchmarkDescription}`,
           context: `Top-pair offensive defensemen must generate offense while managing the puck responsibly`,
-          detailedAnalysis: `${player.firstName} ${player.lastName} is deployed as a top-pair offensive catalyst but is failing to deliver. With ${timeOnIce.toFixed(1)} minutes per game (top-pair usage), we need at least 0.35 PPG and responsible puck management. Current production of ${pointsPerGame.toFixed(2)} PPG with ${turnovers} giveaways vs ${puckRecoveries} takeaways shows poor decision-making under pressure.`,
+          detailedAnalysis: `${player.firstName} ${player.lastName} is deployed as a top-pair offensive catalyst but is failing to deliver. With ${timeOnIce.toFixed(1)} minutes per game (top-pair usage), we need at least ${expectedPPG1D.toFixed(2)} PPG and responsible puck management. Current production of ${pointsPerGame.toFixed(2)} PPG with ${turnovers} giveaways vs ${puckRecoveries} takeaways shows poor decision-making under pressure.`,
           impactOnTeam: `This defenseman consumes premium power play time and offensive zone starts but isn't generating the offense to justify the deployment. The ${plusMinus} plus-minus suggests the team is getting outscored when he's on the ice, negating any offensive contribution.`,
           urgency: 'immediate'
         };
@@ -781,14 +847,26 @@ function analyzeForward(player: Player, metrics: any): PlayerAnalysis {
   let reasoning = `Adequate ${playerType.toLowerCase()} performance for ${lineRole.toLowerCase()} deployment`;
 
   if (lineRole === 'Top Line' || lineRole === 'Second Line') {
-    // Elite forwards must produce at elite levels
-    const expectedPPG = lineRole === 'Top Line' ? 0.6 : 0.45;
+    // Elite forwards must produce at elite levels - use Cup winner benchmarks
+    const benchmarks = loadBenchmarks();
+    const benchmarkRole = mapRoleToBenchmark(lineRole, player.position, timeOnIce);
+
+    // Get expected PPG from benchmarks (P25 = minimum acceptable for Cup winners)
+    let expectedPPG = lineRole === 'Top Line' ? 0.6 : 0.45; // Fallback if no benchmarks
+    let benchmarkDescription = '';
+
+    if (benchmarks && benchmarkRole) {
+      const comparison = compareAgainstBenchmark(benchmarkRole, pointsPerGame, benchmarks);
+      expectedPPG = comparison.benchmark?.p25PPG || expectedPPG;
+      benchmarkDescription = ` Cup-winning ${benchmarkRole}s average ${comparison.benchmark?.avgPPG.toFixed(3)} PPG (minimum: ${comparison.benchmark?.p25PPG.toFixed(3)} PPG).`;
+    }
+
     if (pointsPerGame < expectedPPG) {
       const productionGap = (expectedPPG - pointsPerGame) * 82;
       weakness = {
         type: 'forward_offensive',
         severity: lineRole === 'Top Line' ? 5 : 4,
-        description: `${lineRole} forward underproducing: ${pointsPerGame.toFixed(2)} PPG vs ${expectedPPG.toFixed(2)} expected (${productionGap.toFixed(0)}-point pace gap)`,
+        description: `${lineRole} forward underproducing: ${pointsPerGame.toFixed(2)} PPG vs ${expectedPPG.toFixed(2)} expected (${productionGap.toFixed(0)}-point pace gap).${benchmarkDescription}`,
         context: `${lineRole} forwards with ${timeOnIce.toFixed(1)} minutes must drive offense consistently. ${positionExpectation}`,
         detailedAnalysis: `${player.firstName} ${player.lastName} is deployed as a ${lineRole.toLowerCase()} ${playerType.toLowerCase()} but failing to justify premium ice time. With ${timeOnIce.toFixed(1)} minutes per game (${lineRole.toLowerCase()} usage), current production of ${pointsPerGame.toFixed(2)} PPG (${(pointsPerGame * 82).toFixed(0)} point pace) falls ${productionGap.toFixed(0)} points short of expectations. As a ${playStyle}, ${goalPercentage > 0.5 ? 'goal-scoring' : 'playmaking'} should be the primary strength, but ${goals || 0} goals and ${assists || 0} assists over ${gamesPlayed || 0} games shows inconsistent production. The ${plusMinus} plus-minus indicates the team is not benefiting when this player is on the ice.`,
         impactOnTeam: `${lineRole} forwards consume the most offensive zone starts, power play time, and favorable matchups. Current production means the team is not maximizing these key offensive opportunities. The ${productionGap.toFixed(0)}-point gap over 82 games represents significant lost offensive value that affects team scoring depth and playoff positioning.`,
@@ -1004,28 +1082,59 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
     limit: 100
   });
 
-  // Score candidates based on hockey metrics AND role appropriateness
+  // Load Cup winner benchmarks for replacement scoring
+  const { loadBenchmarks, compareAgainstBenchmark } = await import('../utils/cupWinnerBenchmarks.js');
+  const { mapRoleToBenchmark } = await import('./comprehensiveWeaknessDetection.js');
+  const benchmarks = loadBenchmarks();
+
+  if (!benchmarks) {
+    console.error('Cup winner benchmarks not loaded - cannot find realistic replacements');
+    return [];
+  }
+
+  // Score candidates based on Cup winner benchmarks
   const targetMetrics = await getPositionMetrics(analysis.player);
   const targetRole = analysis.role;
-  const targetScore = targetMetrics ? 
-    (targetMetrics.pointsPerGame * 100 + Math.max(0, targetMetrics.plusMinus)) : 0;
-  
+
+  // Helper to convert metrics to benchmark role
+  const mapRoleToBenchmarkRole = (playerObj: Player, metrics: any): string => {
+    if (!metrics) return 'Unknown';
+    const timeOnIce = metrics.timeOnIce || 0;
+    const ppg = metrics.pointsPerGame || 0;
+    const salary = parseFloat(playerObj.capHit || '0.925');
+    return mapRoleToBenchmark(playerObj.position, timeOnIce, ppg, salary);
+  };
+
+  // Determine what benchmark role we're trying to fill
+  const targetBenchmarkRole = mapRoleToBenchmarkRole(player, targetMetrics);
+  const targetBenchmark = benchmarks[targetBenchmarkRole];
+
+  if (!targetBenchmark) {
+    console.error(`No Cup winner benchmark for role: ${targetBenchmarkRole}`);
+    return [];
+  }
+
   const scoredCandidates: Array<[Player, number]> = [];
   for (const candidate of candidates) {
     const candidateMetrics = await getPositionMetrics(candidate);
     if (!candidateMetrics) continue;
 
     // FILTER OUT ELITE PROSPECTS IN WIN-NOW MODE
-    // In win-now: don't want unproven young players
+    // In win-now: don't want unproven young players (even if talented)
     // In rebuild: elite prospects are EXACTLY what you want!
     const candidateAge = calculatePlayerAgeSync(candidate.dateOfBirth, season) ?? 30;
     const candidateSalary = parseFloat(candidate.capHit) || 0.925;
 
     if (mode === 'win-now' && candidateAge < 24 && candidateSalary < 1.5) {
-      // Check if they're performing at elite level
-      const isEliteProspect = candidate.position === 'G'
-        ? (candidateMetrics.savePct > 0.915)
-        : (candidateMetrics.pointsPerGame > 0.7);
+      // Check if they're performing at elite level using Cup benchmarks
+      const candidateBenchmarkRoleEarly = mapRoleToBenchmarkRole(candidate, candidateMetrics);
+      const candidateComparisonEarly = compareAgainstBenchmark(
+        candidateBenchmarkRoleEarly,
+        candidateMetrics.pointsPerGame || 0,
+        benchmarks
+      );
+
+      const isEliteProspect = candidateComparisonEarly.performance === 'elite';
 
       if (isEliteProspect) {
         console.log(`[Win-now] Filtering out elite prospect: ${candidate.firstName} ${candidate.lastName} (age ${candidateAge}, $${candidateSalary}M, ${candidateMetrics.pointsPerGame?.toFixed(2)} PPG) - too young/unproven for playoff push`);
@@ -1033,38 +1142,44 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
       }
     }
 
-    // Classify the candidate's role using simplified logic to avoid recursion
-    const candidateRole = classifyPlayerRole(candidate, candidateMetrics);
-    
-    // Only consider candidates who play a similar or better role
-    const isAppropriateRole = isRoleAppropriate(targetRole, candidateRole);
-    if (!isAppropriateRole) continue;
+    // Score candidate based on Cup winner benchmarks
+    // How does this candidate compare to Cup-winning players in this role?
+    const candidateBenchmarkRole = mapRoleToBenchmarkRole(candidate, candidateMetrics);
+    const candidateComparison = compareAgainstBenchmark(
+      candidateBenchmarkRole,
+      candidateMetrics.pointsPerGame || 0,
+      benchmarks
+    );
 
-    let score = 0;
-    
-    if (candidate.position === 'G') {
-      score = candidateMetrics.savePct * 1000 + candidateMetrics.winPct * 100;
-    } else if (['D', 'LD', 'RD'].includes(candidate.position)) {
-      if (weakness?.type === 'defense_offensive') {
-        score = candidateMetrics.pointsPerGame * 100 + Math.max(0, candidateMetrics.plusMinus);
-      } else {
-        score = Math.max(0, candidateMetrics.plusMinus) * 2 + candidateMetrics.shotBlocks * 10;
-      }
-    } else {
-      // Forward scoring based on role expectations
-      if (candidateRole.includes('Top-6')) {
-        score = candidateMetrics.pointsPerGame * 100 + Math.max(0, candidateMetrics.plusMinus);
-      } else if (candidateRole.includes('Energy') || candidateRole.includes('Defensive')) {
-        score = candidateMetrics.hits * 5 + Math.max(0, candidateMetrics.plusMinus) * 3 + candidateMetrics.takeaways * 10;
-      } else {
-        score = candidateMetrics.pointsPerGame * 100 + Math.max(0, candidateMetrics.plusMinus);
-      }
+    // Only suggest players who meet or exceed Cup winner standards
+    // In win-now mode, we need Cup-competitive players
+    if (candidateComparison.performance === 'weak' || candidateComparison.performance === 'below-average') {
+      console.log(`Filtered out ${candidate.firstName} ${candidate.lastName}: ${candidateComparison.performance} for ${candidateBenchmarkRole} (${candidateMetrics.pointsPerGame?.toFixed(3)} PPG vs ${targetBenchmark.avgPPG.toFixed(3)} Cup avg)`);
+      continue;
     }
 
-    // Realistic trade logic - avoid fantasy suggestions
+    // Score is based on how far above Cup winner standards they are
+    // Use z-score: positive = above Cup standards, negative = below
+    let score = candidateComparison.zScore * 100; // Z-score of +1.0 = 100 points
+
+    // Add bonus for elite performers (top 25% of Cup winners)
+    if (candidateComparison.performance === 'elite') {
+      score += 50;
+    } else if (candidateComparison.performance === 'above-average') {
+      score += 25;
+    }
+
+    // Calculate improvement based on Cup winner benchmarks
     const targetAge = calculatePlayerAgeSync(analysis.player.dateOfBirth, season) ?? 30;
-    
-    const improvement = (score - targetScore) / Math.max(targetScore, 1);
+    const targetComparison = compareAgainstBenchmark(
+      targetBenchmarkRole,
+      targetMetrics?.pointsPerGame || 0,
+      benchmarks
+    );
+
+    // Improvement = how much better candidate is vs target, in terms of Cup standards
+    // Both are z-scores (std devs from Cup winner mean)
+    const improvement = candidateComparison.zScore - targetComparison.zScore;
     
     // Mode-specific age filtering
     if (mode === 'rebuild') {
@@ -1084,9 +1199,9 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
     }
     
     // Determine if this is a realistic trade based on player tiers
-    const targetTier = getPlayerTier(analysis.player, targetMetrics, season);
-    const candidateTier = getPlayerTier(candidate, candidateMetrics, season);
-    
+    const targetTier = await getPlayerTier(analysis.player, targetMetrics, season);
+    const candidateTier = await getPlayerTier(candidate, candidateMetrics, season);
+
     // Check if this trade is realistic
     const isRealistic = isRealisticTrade(targetTier, candidateTier, targetAge, candidateAge);
     if (!isRealistic) continue; // Skip unrealistic trades like Makar for Carlson
@@ -1103,22 +1218,23 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
     const salaryDifference = candidateSalary - targetSalary;
     
     let shouldInclude = false;
-    const minPerformanceThreshold = targetScore * 0.85; // Allow some performance flexibility for cap efficiency
-    
+
     // PRIORITY TRADE TYPES (what user wants):
     // 1. Better player at same salary (2M for better 2M player)
-    // 2. Equal player at lower salary (equal performance for 1M instead of 2M) 
+    // 2. Equal player at lower salary (equal performance for 1M instead of 2M)
     // 3. Significant upgrade worth paying more for
-    
-    const isSameSalaryUpgrade = Math.abs(salaryDifference) < 0.5 && improvement > 0.1;
-    const isSalaryEfficiencyGain = improvement >= -0.05 && salaryDifference < -1.0; // Similar performance, much cheaper
-    const isWorthwhileUpgrade = improvement > 0.2 && salaryDifference < 2.0; // Clear upgrade without massive salary jump
+
+    // Improvement is in z-scores: +0.5 = half std dev better, +1.0 = one std dev better
+    const isSameSalaryUpgrade = Math.abs(salaryDifference) < 0.5 && improvement > 0.25; // Better player at same price
+    const isSalaryEfficiencyGain = improvement >= -0.2 && salaryDifference < -1.0; // Similar performance, much cheaper
+    const isWorthwhileUpgrade = improvement > 0.5 && salaryDifference < 2.0; // Clear upgrade (0.5+ std devs better)
     const isCapEfficiencyPlay = efficiencyImprovement > 0.3; // Significant efficiency improvement
     
     if (mode === 'rebuild') {
       // Rebuild: prioritize salary savings, youth, and efficiency
       if (candidateAge <= 28) {
-        if (isSalaryEfficiencyGain || isCapEfficiencyPlay || (candidateAge < 26 && improvement >= -0.1)) {
+        // In rebuild, accept similar performance (-0.3 z-score) if young or cheap
+        if (isSalaryEfficiencyGain || isCapEfficiencyPlay || (candidateAge < 26 && improvement >= -0.3)) {
           shouldInclude = true;
           // Boost score for rebuild priorities
           if (salaryDifference < -2.0) score += 15; // Big salary savings
@@ -1128,11 +1244,12 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
       }
     } else {
       // Win-now: prioritize performance with reasonable salary management
+      // In win-now, we need Cup-level players - be strict about improvement
       if (isSameSalaryUpgrade || isWorthwhileUpgrade || isCapEfficiencyPlay) {
         shouldInclude = true;
-        // Boost score for win-now priorities  
+        // Boost score for win-now priorities
         if (isSameSalaryUpgrade) score += 25; // Perfect trade - better player, same money
-        if (improvement > 0.3 && salaryDifference < 1.0) score += 20; // Great upgrade, minimal cost
+        if (improvement > 0.75 && salaryDifference < 1.0) score += 20; // Major upgrade, minimal cost
         if (efficiencyImprovement > 0.4) score += 15; // Solid efficiency gain
       }
     }
@@ -1141,12 +1258,12 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
     const isOverpaid = targetSalary > targetExpectedSalary * 1.2;
     const isBargain = candidateSalary < candidateExpectedSalary * 0.8;
     
-    if (isOverpaid && isBargain && improvement >= -0.1) {
+    if (isOverpaid && isBargain && improvement >= -0.3) {
       shouldInclude = true; // Trade overpaid player for bargain player
       score += 30; // High priority
     }
-    
-    if (shouldInclude && score > minPerformanceThreshold) {
+
+    if (shouldInclude) {
       scoredCandidates.push([candidate, score]);
     }
   }
@@ -1156,37 +1273,46 @@ export async function findHockeyReplacements(analysis: PlayerAnalysis, mode: 'wi
   return scoredCandidates.slice(0, 5).map(([candidate]) => candidate); // Return top 5 options
 }
 
-// Classify player into tiers for realistic trade matching
-function getPlayerTier(player: Player, metrics: any, season: string): 'Elite' | 'Star' | 'Solid' | 'Depth' | 'Replacement' {
+// Classify player into tiers based on Cup winner benchmarks
+async function getPlayerTier(player: Player, metrics: any, season: string): Promise<'Elite' | 'Star' | 'Solid' | 'Depth' | 'Replacement'> {
   if (!metrics) return 'Replacement';
 
-  const { pointsPerGame, plusMinus, timeOnIce } = metrics;
-  const age = calculatePlayerAgeSync(player.dateOfBirth, season) ?? 30;
+  // Load Cup winner benchmarks
+  const { loadBenchmarks, compareAgainstBenchmark } = await import('../utils/cupWinnerBenchmarks.js');
+  const { mapRoleToBenchmark } = await import('./comprehensiveWeaknessDetection.js');
+  const benchmarks = loadBenchmarks();
+
+  if (!benchmarks) return 'Solid'; // Default if benchmarks unavailable
+
+  const { pointsPerGame, timeOnIce } = metrics;
   const salary = parseFloat(player.capHit) || 0.925;
-  
-  // Elite tier: Top performers in their prime
-  if ((pointsPerGame > 0.8 || (player.position === 'D' && pointsPerGame > 0.6)) 
-      && age < 32 && salary > 6.0 && timeOnIce > 20) {
+
+  // Determine player's role
+  const benchmarkRole = mapRoleToBenchmark(player.position, timeOnIce, pointsPerGame || 0, salary);
+  const comparison = compareAgainstBenchmark(benchmarkRole, pointsPerGame || 0, benchmarks);
+
+  // Tier based on Cup winner performance
+  // Elite: Significantly above Cup winners (top 25% / p75+)
+  if (comparison.performance === 'elite') {
     return 'Elite';
   }
-  
-  // Star tier: Very good players, some past prime elites
-  if ((pointsPerGame > 0.6 || (player.position === 'D' && pointsPerGame > 0.45)) 
-      && timeOnIce > 18 && (salary > 4.0 || age < 27)) {
+
+  // Star: Above Cup winner average
+  if (comparison.performance === 'above-average') {
     return 'Star';
   }
-  
-  // Solid tier: Good role players, aging stars
-  if ((pointsPerGame > 0.4 || (player.position === 'D' && pointsPerGame > 0.3))
-      && timeOnIce > 15) {
+
+  // Solid: Meets Cup winner minimum standards (p25+)
+  if (comparison.performance === 'average') {
     return 'Solid';
   }
-  
-  // Depth tier: Bottom-6/Bottom-4 players with roles
-  if (timeOnIce > 10 && plusMinus > -10) {
+
+  // Depth: Below Cup standards but has a role
+  if (comparison.performance === 'below-average' && timeOnIce > 10) {
     return 'Depth';
   }
-  
+
+  // Replacement: Significantly below Cup standards
   return 'Replacement';
 }
 
@@ -1343,233 +1469,68 @@ export async function analyzeTeamWithHockeyIntelligence(teamAbbrev: string, mode
     analyses.push(analysis);
   }
 
-  // ALWAYS identify bottom 5 performers regardless of role - every team has weak links
-  const allPlayerAnalyses = analyses.filter(a => a.performanceMetrics);
-  
-  // Our salary expectations based on roles (from calculateSalaries.ts)
-  const SALARY_EXPECTATIONS = {
-    '1C': { min: 5.9, max: 12.5, expectedPPG: 0.6 },
-    '2C': { min: 4.1, max: 5.85, expectedPPG: 0.45 },
-    '3C': { min: 1.8, max: 4.0, expectedPPG: 0.35 },
-    '4C': { min: 0.925, max: 1.8, expectedPPG: 0.25 },
-    
-    '1LW': { min: 4.7, max: 9.538462, expectedPPG: 0.6 },
-    '2LW': { min: 2.3, max: 4.625, expectedPPG: 0.45 },
-    '3LW': { min: 0.925, max: 2.275, expectedPPG: 0.35 },
-    '4LW': { min: 0.874125, max: 0.925, expectedPPG: 0.25 },
-    
-    '1RW': { min: 4.85, max: 10.5, expectedPPG: 0.6 },
-    '2RW': { min: 1.85, max: 4.766667, expectedPPG: 0.45 },
-    '3RW': { min: 0.925, max: 1.85, expectedPPG: 0.35 },
-    '4RW': { min: 0.8, max: 0.925, expectedPPG: 0.25 },
-    
-    '1D': { min: 5.5, max: 9.0, expectedPPG: 0.5 },
-    '2D': { min: 4.6504, max: 5.5, expectedPPG: 0.4 },
-    '3D': { min: 3.875, max: 4.625, expectedPPG: 0.3 },
-    '4D': { min: 2.5, max: 3.857143, expectedPPG: 0.25 },
-    '5D': { min: 1.3, max: 2.5, expectedPPG: 0.2 },
-    '6D': { min: 0.925, max: 1.3, expectedPPG: 0.15 },
-    
-    'Starting': { min: 7.0, max: 10.0, expectedSavePct: 0.915 },
-    'Backup': { min: 2.0, max: 7.0, expectedSavePct: 0.905 }
-  };
+  // USE CUP WINNER BENCHMARKS TO IDENTIFY WEAK LINKS
+  // This is what separates contenders from pretenders
+  const { detectComprehensiveWeaknesses } = await import('./comprehensiveWeaknessDetection.js');
+  const benchmarkScores = await detectComprehensiveWeaknesses(team.teamId, 10);
 
-  // Score each player relative to their role and salary expectations from our system
-  const playerScores = allPlayerAnalyses.map(analysis => {
-    const metrics = analysis.performanceMetrics;
-    if (!metrics) return { analysis, score: -1000 };
-    
-    const capHit = parseFloat(analysis.player.capHit) || 0.925;
-    
-    // Determine expected salary tier based on actual cap hit
-    let expectedRole = 'Unknown';
-    let expectedPPG = 0.3;
-    
-    if (analysis.position === 'C') {
-      if (capHit >= 5.9) expectedRole = '1C';
-      else if (capHit >= 4.1) expectedRole = '2C';
-      else if (capHit >= 1.8) expectedRole = '3C';
-      else expectedRole = '4C';
-    } else if (analysis.position === 'LW') {
-      if (capHit >= 4.7) expectedRole = '1LW';
-      else if (capHit >= 2.3) expectedRole = '2LW';
-      else if (capHit >= 0.925) expectedRole = '3LW';
-      else expectedRole = '4LW';
-    } else if (analysis.position === 'RW') {
-      if (capHit >= 4.85) expectedRole = '1RW';
-      else if (capHit >= 1.85) expectedRole = '2RW';
-      else if (capHit >= 0.925) expectedRole = '3RW';
-      else expectedRole = '4RW';
-    } else if (['D', 'LD', 'RD'].includes(analysis.position)) {
-      if (capHit >= 5.5) expectedRole = '1D';
-      else if (capHit >= 4.6504) expectedRole = '2D';
-      else if (capHit >= 3.875) expectedRole = '3D';
-      else if (capHit >= 2.5) expectedRole = '4D';
-      else if (capHit >= 1.3) expectedRole = '5D';
-      else expectedRole = '6D';
-    } else if (analysis.position === 'G') {
-      expectedRole = capHit >= 7.0 ? 'Starting' : 'Backup';
-    }
-    
-    const expectations = SALARY_EXPECTATIONS[expectedRole];
-    if (expectations) {
-      expectedPPG = expectations.expectedPPG || 0.3;
-    }
-    
-    // Score = how much they exceed/fall short of salary-based expectations
-    let performanceScore = 0;
-    if (analysis.position === 'G') {
-      const expectedSavePct = expectations?.expectedSavePct || 0.90;
-      performanceScore = (metrics.savePct || 0) - expectedSavePct;
-    } else {
-      // Base performance on points vs expected
-      performanceScore = (metrics.pointsPerGame || 0) - expectedPPG;
+  // Get Critical and High severity players - these are the weak links preventing a Cup run
+  const weakLinksFromBenchmarks = benchmarkScores.filter(s =>
+    s.severityRating === 'Critical' || s.severityRating === 'High'
+  );
 
-      // INCORPORATE ADVANCED METRICS (Corsi/Fenwick) to detect declining players
-      // These metrics reveal underlying performance beyond just points
-      const corsiRel = metrics.corsiForPercentageRelative || 0;
-      const fenwickRel = metrics.fenwickForPercentageRelative || 0;
+  console.log(`Cup winner benchmarks identified ${weakLinksFromBenchmarks.length} weak links (Critical/High severity)`);
 
-      // If a player has decent points but terrible possession metrics, they're likely declining
-      // CF% rel and FF% rel should be around 0 (average). Below -3 is concerning, below -5 is bad
-      if (corsiRel < -3 || fenwickRel < -3) {
-        const possessionPenalty = Math.min(corsiRel, fenwickRel) / 10; // -0.3 to -0.5 penalty
-        performanceScore += possessionPenalty;
-        console.log(`  ${analysis.player.firstName} ${analysis.player.lastName}: Poor possession (CF% rel: ${corsiRel.toFixed(1)}, FF% rel: ${fenwickRel.toFixed(1)}) - penalty: ${possessionPenalty.toFixed(2)}`);
-      }
+  // Convert benchmark weak links to PlayerAnalysis format for replacement finding
+  const weakLinks: PlayerAnalysis[] = [];
 
-      // For defensemen, weight defensive metrics more heavily
-      if (analysis.position === 'D') {
-        const defensiveRating = metrics.gameRatingDef || 0;
-        // Game Rating Def scale: 10 = elite, 7-9 = good, 5-7 = average, <5 = poor
-        if (defensiveRating < 6) {
-          const defPenalty = (6 - defensiveRating) * 0.1; // Penalty for poor defense
-          performanceScore -= defPenalty;
-          console.log(`  ${analysis.player.firstName} ${analysis.player.lastName}: Poor defensive rating (${defensiveRating.toFixed(1)}) - penalty: ${defPenalty.toFixed(2)}`);
-        }
-      }
-    }
+  for (const weakLinkScore of weakLinksFromBenchmarks) {
+    const player = weakLinkScore.player;
 
-    // CRITICAL: Adjust scoring based on win-now vs rebuild mode
-    const playerAge = calculatePlayerAgeSync(analysis.player.dateOfBirth, season) ?? 30;
+    // Find the corresponding analysis we already did
+    const analysis = analyses.find(a => a.player.playerId === player.playerId);
+    if (!analysis) continue;
 
-    if (mode === 'rebuild') {
-      // In rebuild mode, heavily penalize older expensive players and reward younger cheap players
+    const capHit = parseFloat(player.capHit || '0.925');
+    const playerAge = calculatePlayerAgeSync(player.dateOfBirth, season) ?? 30;
 
-      // Age penalty/bonus (rebuild favors youth)
-      const ageFactor = playerAge > 30 ? -0.2 * (playerAge - 30) : 0.1 * (28 - playerAge);
-
-      // Salary penalty (rebuild wants to shed expensive contracts)
-      const salaryPenalty = capHit > 4.0 ? -0.3 * (capHit - 4.0) : 0;
-
-      performanceScore += ageFactor + salaryPenalty;
-
-      // EXTRA PENALTY: Veterans (32+) making $6M+ with declining possession should be prime trade targets
-      if (playerAge >= 32 && capHit >= 6.0) {
-        const veteranPenalty = -0.5; // Strong signal to move expensive vets in rebuild
-        performanceScore += veteranPenalty;
-        console.log(`  ${analysis.player.firstName} ${analysis.player.lastName}: Expensive veteran in rebuild (age ${playerAge}, $${capHit}M) - penalty: ${veteranPenalty.toFixed(2)}`);
-      }
-    } else {
-      // In win-now mode, slightly penalize very old players but don't heavily weight age
-
-      if (playerAge > 35) {
-        performanceScore -= 0.1 * (playerAge - 35); // Slight penalty for very old players
-      }
-
-      // In win-now, also flag expensive players who aren't producing
-      // If making $7M+ but underperforming, that's a problem even in win-now mode
-      if (capHit >= 7.0 && performanceScore < -0.15) {
-        const expensiveUnderperformerPenalty = -0.3;
-        performanceScore += expensiveUnderperformerPenalty;
-        console.log(`  ${analysis.player.firstName} ${analysis.player.lastName}: Expensive underperformer (${capHit}M, score ${performanceScore.toFixed(2)}) - penalty: ${expensiveUnderperformerPenalty.toFixed(2)}`);
-      }
-    }
-
-    // Lower scores = worse value (falling short of expectations)
-    return { analysis, score: performanceScore };
-  });
-  
-  // Sort by score (lowest = worst performers)
-  playerScores.sort((a, b) => a.score - b.score);
-
-  // NEW APPROACH: Only flag players as weak links if we can actually improve the situation
-  // Take underperforming players and check if replacements exist
-  const weakLinks = [];
-  const candidates = playerScores.filter(item => item.score < -0.1); // Significantly underperforming
-
-  console.log(`Found ${candidates.length} underperforming players, checking for upgrade paths...`);
-
-  for (let i = 0; i < Math.min(candidates.length, 10); i++) {
-    const item = candidates[i];
-    const analysis = item.analysis;
-    const capHit = parseFloat(analysis.player.capHit) || 0.925;
-
-    // Build temporary weakness to test replacement search
     const modeContext = mode === 'rebuild' ?
       'Priority target for trading in rebuild - shed salary and acquire youth/assets' :
       'Immediate upgrade needed for playoff push';
 
-    let weakness: HockeyWeakness;
-    if (analysis.role.includes('Top-6')) {
-      weakness = {
-        type: 'forward_offensive',
-        severity: 3,
-        description: `Underperforming relative to role and salary: ${analysis.performanceMetrics?.pointsPerGame.toFixed(2)} PPG for $${capHit.toFixed(1)}M`,
-        context: `Below expectations for role. ${modeContext}`,
-        detailedAnalysis: '',
-        impactOnTeam: '',
-        urgency: 'medium'
-      };
-    } else if (analysis.role.includes('Energy') || analysis.role.includes('Defensive')) {
-      weakness = {
-        type: 'overall_ineffective',
-        severity: 2,
-        description: `Minimal impact for $${capHit.toFixed(1)}M salary`,
-        context: `Poor value in support role. ${modeContext}`,
-        detailedAnalysis: '',
-        impactOnTeam: '',
-        urgency: 'medium'
-      };
-    } else {
-      weakness = {
-        type: 'overall_ineffective',
-        severity: 2,
-        description: `Below expectations: ${analysis.performanceMetrics?.pointsPerGame.toFixed(2)} PPG for $${capHit.toFixed(1)}M`,
-        context: `Underperforming relative to salary. ${modeContext}`,
-        detailedAnalysis: '',
-        impactOnTeam: '',
-        urgency: 'medium'
-      };
-    }
+    // Build weakness from Cup winner benchmark data
+    const weakness: HockeyWeakness = {
+      type: weakLinkScore.severityRating === 'Critical' ? 'overall_ineffective' : 'forward_offensive',
+      severity: weakLinkScore.severityRating === 'Critical' ? 3 : 2,
+      description: `${weakLinkScore.severityRating} - ${weakLinkScore.zScores.compositeZScore.toFixed(2)} std devs below Cup winners`,
+      context: `PPG: ${weakLinkScore.metrics.ppg.toFixed(3)} (Cup avg: ${weakLinkScore.benchmarks.avgPPG.toFixed(3)}), Corsi: ${weakLinkScore.metrics.corsiForPct.toFixed(1)}% (Cup avg: ${(weakLinkScore.benchmarks.avgCorsiForPct * 100).toFixed(1)}%). ${modeContext}`,
+      detailedAnalysis: weakLinkScore.explanation,
+      impactOnTeam: `As a ${weakLinkScore.benchmarkRole}, this gap represents a major weakness in a critical position.`,
+      urgency: weakLinkScore.severityRating === 'Critical' ? 'immediate' : 'high'
+    };
 
-    weakness = generateDetailedWeaknessAnalysis(analysis.player, analysis.performanceMetrics, weakness);
-
+    // Check if replacements exist
     const tempWeakLink = {
       ...analysis,
       weakness,
       isWeakLink: true,
       replacementStrategy: 'replace' as const,
-      reasoning: 'Underperforming relative to salary expectations'
+      reasoning: `Below Cup winner standards: ${weakLinkScore.explanation}`
     };
 
-    // Check if replacements actually exist
     const replacements = await findHockeyReplacements(tempWeakLink, mode);
 
-    // Strategic importance check (even without replacements, may want to highlight for rebuild)
-    const playerAge = calculatePlayerAgeSync(analysis.player.dateOfBirth, season) ?? 30;
+    // Strategic importance check
     const strategicPriority = mode === 'rebuild' && capHit > 4.0 && playerAge > 30;
 
     // Only add to weak links if we have actionable recommendations OR strategic importance
     if (replacements.length > 0 || strategicPriority) {
       weakLinks.push(tempWeakLink);
-      console.log(`Weak link identified: ${analysis.player.firstName} ${analysis.player.lastName} - ${replacements.length} replacements found, strategic: ${strategicPriority}`);
-    } else {
-      console.log(`Skipped: ${analysis.player.firstName} ${analysis.player.lastName} - no realistic upgrades available`);
+      console.log(`Weak link: ${player.firstName} ${player.lastName} (${weakLinkScore.benchmarkRole}) - ${weakLinkScore.severityRating} - ${replacements.length} replacements found`);
     }
   }
 
-  console.log(`Final weak links: ${weakLinks.length}`);
+  console.log(`Final weak links with replacements: ${weakLinks.length}`);
 
   // Generate recommendations
   const recommendations = [];
